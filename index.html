@@ -120,6 +120,8 @@
         let auth;
         let userId;
 
+        let isListenersSetup = false;
+
         const toggleLoading = (show) => {
             const spinner = document.getElementById('loading-spinner');
             if (spinner) {
@@ -177,6 +179,8 @@
         };
 
         const setupEventListeners = () => {
+            if (isListenersSetup) return;
+            
             const signinForm = document.getElementById('signin-form');
             if (signinForm) {
                 signinForm.addEventListener('submit', (e) => {
@@ -185,7 +189,7 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        renderUI(auth.currentUser);
+                        // The onAuthStateChanged listener will handle the UI render after this.
                     }
                 });
             }
@@ -212,6 +216,7 @@
             
             // Initial call to add the first unit field
             addUnitField();
+            isListenersSetup = true;
         };
 
         const addUnitField = () => {
@@ -377,8 +382,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebaseAndAuth().then(() => {
                 onAuthStateChanged(auth, renderUI);
+                setupEventListeners();
             });
-            setupEventListeners();
         });
     </script>
 </body>
