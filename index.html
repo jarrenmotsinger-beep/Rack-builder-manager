@@ -375,9 +375,9 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            setupEventListeners();
             setupFirebaseAndAuth().then(() => {
                 onAuthStateChanged(auth, renderUI);
+                setupEventListeners();
             });
         });
     </script>
