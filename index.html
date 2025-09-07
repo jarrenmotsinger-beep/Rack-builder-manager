@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rack Build Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div id="loading-spinner" class="loading-overlay hidden">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+    
+    <!-- Main container for the app -->
+    <div class="p-4 w-full max-w-lg mx-auto">
+        <div id="app-container" class="space-y-6">
+            <!-- Sign-in Page -->
+            <div id="signin-page" class="bg-white p-6 rounded-2xl shadow-md hidden">
+                <h1 class="text-3xl font-bold text-center mb-4">Sign In</h1>
+                <p class="text-center text-gray-500 mb-6">Enter your name to get started.</p>
+                <form id="signin-form" class="space-y-4">
+                    <label for="user-name" class="block text-gray-700 font-medium">Your Name</label>
+                    <input type="text" id="user-name" placeholder="Jarren" required
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" id="signin-button"
+                            class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Go
+                    </button>
+                </form>
+            </div>
+
+            <!-- Main App Page -->
+            <div id="main-app" class="space-y-6 hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-md text-center">
+                    <h1 class="text-3xl font-bold mb-1">Rack Build Manager</h1>
+                    <p class="text-gray-500 text-lg">Welcome, <span id="user-display-name"></span></p>
+                    <p class="text-xs text-gray-400 mt-2">User ID: <span id="user-id-display"></span></p>
+                </div>
+
+                <!-- Create New Build Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Create New Build</h2>
+                    <form id="build-form" class="space-y-4">
+                        <input type="number" id="rack-number" placeholder="Rack Number (1-8)" min="1" max="8" required
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="customer-name" placeholder="Customer Name" required
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        
+                        <div id="units-container" class="space-y-4">
+                            <!-- Unit input fields will be dynamically added here -->
+                        </div>
+
+                        <button type="button" id="add-unit-btn"
+                                class="w-full bg-gray-200 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+                            Add Another Unit
+                        </button>
+
+                        <textarea id="notes-instructions" placeholder="Notes / Instructions" rows="3"
+                                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+
+                        <button type="submit" id="add-to-build-btn"
+                                class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                            Add to Build Sheet
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Current Builds Section -->
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Current Builds</h2>
+                    <div id="current-builds-list" class="space-y-4">
+                        <p class="text-center text-gray-400" id="current-builds-message">No builds yet. Create one above!</p>
+                    </div>
+                </div>
+
+                <!-- Completed Builds Section -->
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Completed Builds</h2>
+                    <div id="completed-builds-list" class="space-y-4">
+                        <p class="text-center text-gray-400" id="completed-builds-message">No builds have been completed yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, deleteDoc, onSnapshot, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase configuration, provided by the environment.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let userId;
+
+        const toggleLoading = (show) => {
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.classList.toggle('hidden', !show);
+            }
+        };
+
+        const setupFirebaseAndAuth = async () => {
+            if (!firebaseConfig) {
+                console.error("Firebase config is not available. Cannot initialize the app.");
+                return;
+            }
+            try {
+                toggleLoading(true);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('debug');
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error setting up Firebase:", error);
+                toggleLoading(false);
+            }
+        };
+        
+        const renderUI = (user) => {
+            const signinPage = document.getElementById('signin-page');
+            const mainApp = document.getElementById('main-app');
+            const userDisplayName = document.getElementById('user-display-name');
+            const userIdDisplay = document.getElementById('user-id-display');
+            
+            if (user) {
+                userId = user.uid;
+                const displayName = localStorage.getItem('userName');
+                if (displayName) {
+                    userDisplayName.textContent = displayName;
+                    userIdDisplay.textContent = userId;
+                    mainApp.classList.remove('hidden');
+                    signinPage.classList.add('hidden');
+                    startFirestoreListeners();
+                } else {
+                    signinPage.classList.remove('hidden');
+                    mainApp.classList.add('hidden');
+                }
+            } else {
+                signinPage.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+            }
+            toggleLoading(false);
+        };
+
+        const setupEventListeners = () => {
+            const signinForm = document.getElementById('signin-form');
+            if (signinForm) {
+                signinForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const userNameInput = document.getElementById('user-name');
+                    const userName = userNameInput.value.trim();
+                    if (userName) {
+                        localStorage.setItem('userName', userName);
+                        renderUI(auth.currentUser);
+                    }
+                });
+            }
+
+            const buildForm = document.getElementById('build-form');
+            if (buildForm) {
+                buildForm.addEventListener('submit', handleAddBuild);
+            }
+
+            const unitsContainer = document.getElementById('units-container');
+            if (unitsContainer) {
+                unitsContainer.addEventListener('click', handleRemoveUnit);
+            }
+
+            const addUnitBtn = document.getElementById('add-unit-btn');
+            if (addUnitBtn) {
+                addUnitBtn.addEventListener('click', addUnitField);
+            }
+
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) {
+                appContainer.addEventListener('click', handleBuildActions);
+            }
+            
+            // Initial call to add the first unit field
+            addUnitField();
+        };
+
+        const addUnitField = () => {
+            const unitsContainer = document.getElementById('units-container');
+            if (unitsContainer) {
+                const unitGroup = document.createElement('div');
+                unitGroup.className = 'unit-group space-y-2';
+                unitGroup.innerHTML = `
+                    <input type="text" placeholder="Unit Type" required
+                           class="unit-type w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex items-center space-x-2">
+                        <input type="number" placeholder="Quantity" required min="1"
+                               class="unit-quantity w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" class="remove-unit-btn bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors duration-200">-</button>
+                    </div>
+                `;
+                unitsContainer.appendChild(unitGroup);
+            }
+        };
+
+        const handleRemoveUnit = (e) => {
+            const unitsContainer = document.getElementById('units-container');
+            if (e.target.classList.contains('remove-unit-btn') && unitsContainer) {
+                if (unitsContainer.querySelectorAll('.unit-group').length > 1) {
+                    e.target.closest('.unit-group').remove();
+                }
+            }
+        };
+
+        const handleAddBuild = async (e) => {
+            e.preventDefault();
+            toggleLoading(true);
+            const buildForm = document.getElementById('build-form');
+            const unitsContainer = document.getElementById('units-container');
+
+            const rackNumber = buildForm['rack-number'].value;
+            const customerName = buildForm['customer-name'].value;
+            const notes = buildForm['notes-instructions'].value;
+            
+            const units = Array.from(unitsContainer.querySelectorAll('.unit-group')).map(unitGroup => {
+                const unitType = unitGroup.querySelector('.unit-type').value;
+                const unitQuantity = unitGroup.querySelector('.unit-quantity').value;
+                return { unitType, quantity: parseInt(unitQuantity) };
+            }).filter(unit => unit.unitType && unit.quantity);
+            
+            if (units.length === 0) {
+                console.error("Please add at least one unit type.");
+                toggleLoading(false);
+                return;
+            }
+
+            const newBuild = {
+                rackNumber: parseInt(rackNumber),
+                customerName: customerName,
+                notes: notes,
+                units: units,
+                createdAt: serverTimestamp(),
+                userId: userId,
+                userDisplayName: localStorage.getItem('userName') || 'Anonymous'
+            };
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/builds`), newBuild);
+                buildForm.reset();
+                unitsContainer.innerHTML = '';
+                addUnitField();
+            } catch (error) {
+                console.error("Error adding build:", error);
+            } finally {
+                toggleLoading(false);
+            }
+        };
+
+        const handleBuildActions = async (e) => {
+            if (!auth.currentUser) return;
+            
+            const target = e.target;
+            const buildId = target.dataset.id;
+            
+            if (target.classList.contains('complete-btn')) {
+                toggleLoading(true);
+                try {
+                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        await addDoc(collection(db, `artifacts/${appId}/public/data/completed_builds`), docSnap.data());
+                        await deleteDoc(docRef);
+                    }
+                } catch (error) {
+                    console.error("Error marking build as complete:", error);
+                } finally {
+                    toggleLoading(false);
+                }
+            } else if (target.classList.contains('delete-btn')) {
+                toggleLoading(true);
+                const parent = target.closest('.bg-white.p-6');
+                try {
+                    if (parent.querySelector('h2').textContent.includes('Current')) {
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId));
+                    } else if (parent.querySelector('h2').textContent.includes('Completed')) {
+                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/completed_builds`, buildId));
+                    }
+                } catch (error) {
+                    console.error("Error deleting build:", error);
+                } finally {
+                    toggleLoading(false);
+                }
+            }
+        };
+
+        const startFirestoreListeners = () => {
+            if (!db || !userId) return;
+
+            const currentBuildsList = document.getElementById('current-builds-list');
+            const completedBuildsList = document.getElementById('completed-builds-list');
+            const currentBuildsMessage = document.getElementById('current-builds-message');
+            const completedBuildsMessage = document.getElementById('completed-builds-message');
+            
+            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/builds`), (snapshot) => {
+                const builds = [];
+                snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
+                renderBuilds(builds, currentBuildsList, currentBuildsMessage, false);
+            }, (error) => console.error("Error listening to current builds:", error));
+
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/completed_builds`), (snapshot) => {
+                const builds = [];
+                snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
+                renderBuilds(builds, completedBuildsList, completedBuildsMessage, true);
+            }, (error) => console.error("Error listening to completed builds:", error));
+        };
+
+        const renderBuilds = (builds, container, messageElement, isCompleted) => {
+            container.innerHTML = '';
+            if (builds.length === 0) {
+                messageElement.classList.remove('hidden');
+            } else {
+                messageElement.classList.add('hidden');
+                builds.forEach(build => {
+                    const buildCard = document.createElement('div');
+                    buildCard.className = 'bg-gray-50 p-4 rounded-lg shadow-sm space-y-2';
+                    const unitsHtml = (build.units || []).map(unit => `<li>${unit.quantity}x ${unit.unitType}</li>`).join('');
+                    buildCard.innerHTML = `
+                        <p class="font-semibold">Rack #${build.rackNumber} - ${build.customerName}</p>
+                        <p class="text-xs text-gray-500">Created by: ${build.userDisplayName || 'Anonymous'} (${build.userId || 'N/A'})</p>
+                        <ul class="list-disc list-inside text-sm">
+                            ${unitsHtml}
+                        </ul>
+                        ${build.notes ? `<p class="text-xs text-gray-500 mt-2">${build.notes}</p>` : ''}
+                        <div class="flex space-x-2">
+                            ${!isCompleted ? `
+                                <button class="complete-btn bg-green-100 text-green-600 py-1 px-3 rounded-lg text-sm hover:bg-green-200 transition-colors duration-200" data-id="${build.id}">Mark as Complete</button>
+                                <button class="delete-btn bg-red-100 text-red-600 py-1 px-3 rounded-lg text-sm hover:bg-red-200 transition-colors duration-200" data-id="${build.id}">Delete</button>
+                            ` : `
+                                <button class="delete-btn bg-red-100 text-red-600 py-1 px-3 rounded-lg text-sm hover:bg-red-200 transition-colors duration-200" data-id="${build.id}">Delete</button>
+                            `}
+                        </div>
+                    `;
+                    container.appendChild(buildCard);
+                });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFirebaseAndAuth().then(() => {
+                onAuthStateChanged(auth, renderUI);
+            });
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html>
