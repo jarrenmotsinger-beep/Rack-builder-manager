@@ -120,8 +120,6 @@
         let auth;
         let userId;
 
-        let areAppListenersSetup = false;
-
         const toggleLoading = (show) => {
             const spinner = document.getElementById('loading-spinner');
             if (spinner) {
@@ -166,11 +164,7 @@
                     userIdDisplay.textContent = userId;
                     mainApp.classList.remove('hidden');
                     signinPage.classList.add('hidden');
-                    if (!areAppListenersSetup) {
-                        setupAppEventListeners();
-                        startFirestoreListeners();
-                        areAppListenersSetup = true;
-                    }
+                    startFirestoreListeners();
                 } else {
                     signinPage.classList.remove('hidden');
                     mainApp.classList.add('hidden');
@@ -182,7 +176,7 @@
             toggleLoading(false);
         };
         
-        const setupSignInEventListeners = () => {
+        const setupEventListeners = () => {
             const signinForm = document.getElementById('signin-form');
             if (signinForm) {
                 signinForm.addEventListener('submit', (e) => {
@@ -191,13 +185,11 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        // The onAuthStateChanged listener will handle the UI render after this.
+                        renderUI(auth.currentUser);
                     }
                 });
             }
-        };
-
-        const setupAppEventListeners = () => {
+            
             const buildForm = document.getElementById('build-form');
             if (buildForm) {
                 buildForm.addEventListener('submit', handleAddBuild);
@@ -383,7 +375,7 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            setupSignInEventListeners();
+            setupEventListeners();
             setupFirebaseAndAuth().then(() => {
                 onAuthStateChanged(auth, renderUI);
             });
