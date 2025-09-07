@@ -111,10 +111,18 @@
         import { getFirestore, doc, getDoc, addDoc, deleteDoc, onSnapshot, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables for Firebase configuration, provided by the environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Global variables for Firebase configuration.
+        // Replace this entire firebaseConfig object with your actual config from the Firebase Console.
+        const firebaseConfig = {
+  apiKey: "AIzaSyCU8UJbr5xfWRRUwvPMAeXVQbRzOpf5Nmw",
+  authDomain: "rackit-a8092.firebaseapp.com",
+  projectId: "rackit-a8092",
+  storageBucket: "rackit-a8092.firebasestorage.app",
+  messagingSenderId: "817233455874",
+  appId: "1:817233455874:web:babd7cf88e3091a4ba701b",
+  measurementId: "G-5C250PGSXY"
+};
+        const initialAuthToken = null;
 
         let db;
         let auth;
@@ -128,7 +136,7 @@
         };
 
         const setupFirebaseAndAuth = async () => {
-            if (!firebaseConfig) {
+            if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
                 console.error("Firebase config is not available. Cannot initialize the app.");
                 return;
             }
@@ -274,7 +282,7 @@
             };
 
             try {
-                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/builds`), newBuild);
+                await addDoc(collection(db, `builds`), newBuild);
                 buildForm.reset();
                 unitsContainer.innerHTML = '';
                 addUnitField();
@@ -294,10 +302,10 @@
             if (target.classList.contains('complete-btn')) {
                 toggleLoading(true);
                 try {
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId);
+                    const docRef = doc(db, `builds`, buildId);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
-                        await addDoc(collection(db, `artifacts/${appId}/public/data/archived_builds`), docSnap.data());
+                        await addDoc(collection(db, `archived_builds`), docSnap.data());
                         await deleteDoc(docRef);
                     }
                 } catch (error) {
@@ -310,9 +318,9 @@
                 const parent = target.closest('.bg-white.p-6');
                 try {
                     if (parent.querySelector('h2').textContent.includes('Current')) {
-                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId));
+                        await deleteDoc(doc(db, `builds`, buildId));
                     } else if (parent.querySelector('h2').textContent.includes('Archived')) {
-                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/archived_builds`, buildId));
+                        await deleteDoc(doc(db, `archived_builds`, buildId));
                     }
                 } catch (error) {
                     console.error("Error deleting build:", error);
@@ -330,13 +338,13 @@
             const currentBuildsMessage = document.getElementById('current-builds-message');
             const archivedBuildsMessage = document.getElementById('archived-builds-message');
             
-            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/builds`), (snapshot) => {
+            onSnapshot(collection(db, `builds`), (snapshot) => {
                 const builds = [];
                 snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
                 renderBuilds(builds, currentBuildsList, currentBuildsMessage, false);
             }, (error) => console.error("Error listening to current builds:", error));
 
-            onSnapshot(collection(db, `artifacts/${appId}/public/data/archived_builds`), (snapshot) => {
+            onSnapshot(collection(db, `archived_builds`), (snapshot) => {
                 const builds = [];
                 snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
                 renderBuilds(builds, archivedBuildsList, archivedBuildsMessage, true);
