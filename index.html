@@ -94,11 +94,11 @@
                     </div>
                 </div>
 
-                <!-- Completed Builds Section -->
+                <!-- Archived Builds Section -->
                 <div class="bg-white p-6 rounded-2xl shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">Completed Builds</h2>
-                    <div id="completed-builds-list" class="space-y-4">
-                        <p class="text-center text-gray-400" id="completed-builds-message">No builds have been completed yet.</p>
+                    <h2 class="text-xl font-semibold mb-4">Archived Builds</h2>
+                    <div id="archived-builds-list" class="space-y-4">
+                        <p class="text-center text-gray-400" id="archived-builds-message">No builds have been archived yet.</p>
                     </div>
                 </div>
             </div>
@@ -185,7 +185,7 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        renderUI(auth.currentUser);
+                        // The onAuthStateChanged listener will handle the UI render after this.
                     }
                 });
             }
@@ -297,7 +297,7 @@
                     const docRef = doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
-                        await addDoc(collection(db, `artifacts/${appId}/public/data/completed_builds`), docSnap.data());
+                        await addDoc(collection(db, `artifacts/${appId}/public/data/archived_builds`), docSnap.data());
                         await deleteDoc(docRef);
                     }
                 } catch (error) {
@@ -311,8 +311,8 @@
                 try {
                     if (parent.querySelector('h2').textContent.includes('Current')) {
                         await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId));
-                    } else if (parent.querySelector('h2').textContent.includes('Completed')) {
-                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/completed_builds`, buildId));
+                    } else if (parent.querySelector('h2').textContent.includes('Archived')) {
+                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/archived_builds`, buildId));
                     }
                 } catch (error) {
                     console.error("Error deleting build:", error);
@@ -326,9 +326,9 @@
             if (!db || !userId) return;
 
             const currentBuildsList = document.getElementById('current-builds-list');
-            const completedBuildsList = document.getElementById('completed-builds-list');
+            const archivedBuildsList = document.getElementById('archived-builds-list');
             const currentBuildsMessage = document.getElementById('current-builds-message');
-            const completedBuildsMessage = document.getElementById('completed-builds-message');
+            const archivedBuildsMessage = document.getElementById('archived-builds-message');
             
             onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/builds`), (snapshot) => {
                 const builds = [];
@@ -336,11 +336,11 @@
                 renderBuilds(builds, currentBuildsList, currentBuildsMessage, false);
             }, (error) => console.error("Error listening to current builds:", error));
 
-            onSnapshot(collection(db, `artifacts/${appId}/public/data/completed_builds`), (snapshot) => {
+            onSnapshot(collection(db, `artifacts/${appId}/public/data/archived_builds`), (snapshot) => {
                 const builds = [];
                 snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
-                renderBuilds(builds, completedBuildsList, completedBuildsMessage, true);
-            }, (error) => console.error("Error listening to completed builds:", error));
+                renderBuilds(builds, archivedBuildsList, archivedBuildsMessage, true);
+            }, (error) => console.error("Error listening to archived builds:", error));
         };
 
         const renderBuilds = (builds, container, messageElement, isCompleted) => {
