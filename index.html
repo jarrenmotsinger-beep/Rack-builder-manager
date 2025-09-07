@@ -120,7 +120,7 @@
         let auth;
         let userId;
 
-        let isListenersSetup = false;
+        let areAppListenersSetup = false;
 
         const toggleLoading = (show) => {
             const spinner = document.getElementById('loading-spinner');
@@ -166,7 +166,11 @@
                     userIdDisplay.textContent = userId;
                     mainApp.classList.remove('hidden');
                     signinPage.classList.add('hidden');
-                    startFirestoreListeners();
+                    if (!areAppListenersSetup) {
+                        setupAppEventListeners();
+                        startFirestoreListeners();
+                        areAppListenersSetup = true;
+                    }
                 } else {
                     signinPage.classList.remove('hidden');
                     mainApp.classList.add('hidden');
@@ -177,10 +181,8 @@
             }
             toggleLoading(false);
         };
-
-        const setupEventListeners = () => {
-            if (isListenersSetup) return;
-            
+        
+        const setupSignInEventListeners = () => {
             const signinForm = document.getElementById('signin-form');
             if (signinForm) {
                 signinForm.addEventListener('submit', (e) => {
@@ -193,7 +195,9 @@
                     }
                 });
             }
+        };
 
+        const setupAppEventListeners = () => {
             const buildForm = document.getElementById('build-form');
             if (buildForm) {
                 buildForm.addEventListener('submit', handleAddBuild);
@@ -216,7 +220,6 @@
             
             // Initial call to add the first unit field
             addUnitField();
-            isListenersSetup = true;
         };
 
         const addUnitField = () => {
@@ -380,9 +383,9 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            setupSignInEventListeners();
             setupFirebaseAndAuth().then(() => {
                 onAuthStateChanged(auth, renderUI);
-                setupEventListeners();
             });
         });
     </script>
