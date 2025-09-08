@@ -112,17 +112,9 @@
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase configuration.
-        // Replace this entire firebaseConfig object with your actual config from the Firebase Console.
-        const firebaseConfig = {
-  apiKey: "AIzaSyAOs8cMxk0UvmG4HOju2ucnu9bCHVNkQkM",
-  authDomain: "rack-build-manager.firebaseapp.com",
-  projectId: "rack-build-manager",
-  storageBucket: "rack-build-manager.firebasestorage.app",
-  messagingSenderId: "48743389815",
-  appId: "1:48743389815:web:7b3e54c27c48003ba4c472",
-  measurementId: "G-51DH119VD2"
-};
-        const initialAuthToken = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db;
         let auth;
@@ -281,7 +273,7 @@
             };
 
             try {
-                await addDoc(collection(db, `builds`), newBuild);
+                await addDoc(collection(db, `artifacts/${appId}/users/${userId}/builds`), newBuild);
                 buildForm.reset();
                 unitsContainer.innerHTML = '';
                 addUnitField();
@@ -301,10 +293,10 @@
             if (target.classList.contains('complete-btn')) {
                 toggleLoading(true);
                 try {
-                    const docRef = doc(db, `builds`, buildId);
+                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
-                        await addDoc(collection(db, `archived_builds`), docSnap.data());
+                        await addDoc(collection(db, `artifacts/${appId}/users/${userId}/archived_builds`), docSnap.data());
                         await deleteDoc(docRef);
                     }
                 } catch (error) {
@@ -317,9 +309,9 @@
                 const parent = target.closest('.bg-white.p-6');
                 try {
                     if (parent.querySelector('h2').textContent.includes('Current')) {
-                        await deleteDoc(doc(db, `builds`, buildId));
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/builds`, buildId));
                     } else if (parent.querySelector('h2').textContent.includes('Archived')) {
-                        await deleteDoc(doc(db, `archived_builds`, buildId));
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/archived_builds`, buildId));
                     }
                 } catch (error) {
                     console.error("Error deleting build:", error);
@@ -337,13 +329,13 @@
             const currentBuildsMessage = document.getElementById('current-builds-message');
             const archivedBuildsMessage = document.getElementById('archived-builds-message');
             
-            onSnapshot(collection(db, `builds`), (snapshot) => {
+            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/builds`), (snapshot) => {
                 const builds = [];
                 snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
                 renderBuilds(builds, currentBuildsList, currentBuildsMessage, false);
             }, (error) => console.error("Error listening to current builds:", error));
 
-            onSnapshot(collection(db, `archived_builds`), (snapshot) => {
+            onSnapshot(collection(db, `artifacts/${appId}/users/${userId}/archived_builds`), (snapshot) => {
                 const builds = [];
                 snapshot.forEach(doc => builds.push({ id: doc.id, ...doc.data() }));
                 renderBuilds(builds, archivedBuildsList, archivedBuildsMessage, true);
