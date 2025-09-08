@@ -186,23 +186,14 @@
         const setupEventListeners = () => {
             const signinForm = document.getElementById('signin-form');
             if (signinForm) {
-                signinForm.addEventListener('submit', async (e) => {
+                signinForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    toggleLoading(true);
                     const userNameInput = document.getElementById('user-name');
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        try {
-                            // Wait for the anonymous sign-in to complete
-                            await signInAnonymously(auth);
-                            // Then render the UI with the now-authenticated user
-                            renderUI(auth.currentUser);
-                        } catch (error) {
-                            console.error("Error during anonymous sign-in:", error);
-                        } finally {
-                            toggleLoading(false);
-                        }
+                        // Manually call renderUI to update the page instantly.
+                        renderUI(auth.currentUser);
                     }
                 });
             }
