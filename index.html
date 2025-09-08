@@ -139,6 +139,38 @@
                 db = getFirestore(app);
                 setLogLevel('debug');
                 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        const displayName = localStorage.getItem('userName');
+                        if (displayName) {
+                            const signinPage = document.getElementById('signin-page');
+                            const mainApp = document.getElementById('main-app');
+                            const userDisplayName = document.getElementById('user-display-name');
+                            const userIdDisplay = document.getElementById('user-id-display');
+
+                            userDisplayName.textContent = displayName;
+                            userIdDisplay.textContent = userId;
+                            mainApp.classList.remove('hidden');
+                            signinPage.classList.add('hidden');
+                            startFirestoreListeners();
+                        } else {
+                            // User is authenticated but hasn't entered a name yet, so show the sign-in page.
+                            const signinPage = document.getElementById('signin-page');
+                            const mainApp = document.getElementById('main-app');
+                            signinPage.classList.remove('hidden');
+                            mainApp.classList.add('hidden');
+                        }
+                    } else {
+                        // Not authenticated yet, show sign-in page
+                        const signinPage = document.getElementById('signin-page');
+                        const mainApp = document.getElementById('main-app');
+                        signinPage.classList.remove('hidden');
+                        mainApp.classList.add('hidden');
+                    }
+                    toggleLoading(false);
+                });
+                
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
@@ -150,32 +182,6 @@
             }
         };
         
-        const renderUI = (user) => {
-            const signinPage = document.getElementById('signin-page');
-            const mainApp = document.getElementById('main-app');
-            const userDisplayName = document.getElementById('user-display-name');
-            const userIdDisplay = document.getElementById('user-id-display');
-            
-            if (user) {
-                userId = user.uid;
-                const displayName = localStorage.getItem('userName');
-                if (displayName) {
-                    userDisplayName.textContent = displayName;
-                    userIdDisplay.textContent = userId;
-                    mainApp.classList.remove('hidden');
-                    signinPage.classList.add('hidden');
-                    startFirestoreListeners();
-                } else {
-                    signinPage.classList.remove('hidden');
-                    mainApp.classList.add('hidden');
-                }
-            } else {
-                signinPage.classList.remove('hidden');
-                mainApp.classList.add('hidden');
-            }
-            toggleLoading(false);
-        };
-        
         const setupEventListeners = () => {
             const signinForm = document.getElementById('signin-form');
             if (signinForm) {
@@ -185,6 +191,8 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
+                        // Trigger a re-evaluation of the auth state to show the main app
+                        window.location.reload(); 
                     }
                 });
             }
@@ -242,6 +250,10 @@
 
         const handleAddBuild = async (e) => {
             e.preventDefault();
+            if (!userId) {
+                console.error("User not authenticated. Please sign in first.");
+                return;
+            }
             toggleLoading(true);
             const buildForm = document.getElementById('build-form');
             const unitsContainer = document.getElementById('units-container');
@@ -380,7 +392,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebaseAndAuth().then(() => {
-                onAuthStateChanged(auth, renderUI);
                 setupEventListeners();
             });
         });
