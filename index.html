@@ -114,14 +114,13 @@
         // Global variables for Firebase configuration.
         // Replace this entire firebaseConfig object with your actual config from the Firebase Console.
         const firebaseConfig = {
-  apiKey: "AIzaSyCU8UJbr5xfWRRUwvPMAeXVQbRzOpf5Nmw",
-  authDomain: "rackit-a8092.firebaseapp.com",
-  projectId: "rackit-a8092",
-  storageBucket: "rackit-a8092.firebasestorage.app",
-  messagingSenderId: "817233455874",
-  appId: "1:817233455874:web:babd7cf88e3091a4ba701b",
-  measurementId: "G-5C250PGSXY"
-};
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         const initialAuthToken = null;
 
         let db;
@@ -193,7 +192,8 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        // The onAuthStateChanged listener will handle the UI render after this.
+                        // Manually call renderUI to update the page instantly.
+                        renderUI(auth.currentUser);
                     }
                 });
             }
