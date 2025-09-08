@@ -285,9 +285,9 @@
                 buildForm.reset();
                 unitsContainer.innerHTML = '';
                 addUnitField();
-                toggleLoading(false);
             } catch (error) {
                 console.error("Error adding build:", error);
+            } finally {
                 toggleLoading(false);
             }
         };
