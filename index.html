@@ -107,7 +107,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, deleteDoc, onSnapshot, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -139,43 +139,33 @@
                 db = getFirestore(app);
                 setLogLevel('debug');
                 
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        const displayName = localStorage.getItem('userName');
-                        if (displayName) {
-                            const signinPage = document.getElementById('signin-page');
-                            const mainApp = document.getElementById('main-app');
-                            const userDisplayName = document.getElementById('user-display-name');
-                            const userIdDisplay = document.getElementById('user-id-display');
-
-                            userDisplayName.textContent = displayName;
-                            userIdDisplay.textContent = userId;
-                            mainApp.classList.remove('hidden');
-                            signinPage.classList.add('hidden');
-                            startFirestoreListeners();
-                        } else {
-                            // User is authenticated but hasn't entered a name yet, so show the sign-in page.
-                            const signinPage = document.getElementById('signin-page');
-                            const mainApp = document.getElementById('main-app');
-                            signinPage.classList.remove('hidden');
-                            mainApp.classList.add('hidden');
-                        }
-                    } else {
-                        // Not authenticated yet, show sign-in page
-                        const signinPage = document.getElementById('signin-page');
-                        const mainApp = document.getElementById('main-app');
-                        signinPage.classList.remove('hidden');
-                        mainApp.classList.add('hidden');
-                    }
-                    toggleLoading(false);
-                });
-                
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
+
+                userId = auth.currentUser?.uid || 'anonymous';
+                const displayName = localStorage.getItem('userName');
+                
+                if (displayName && userId) {
+                    const signinPage = document.getElementById('signin-page');
+                    const mainApp = document.getElementById('main-app');
+                    const userDisplayName = document.getElementById('user-display-name');
+                    const userIdDisplay = document.getElementById('user-id-display');
+
+                    userDisplayName.textContent = displayName;
+                    userIdDisplay.textContent = userId;
+                    mainApp.classList.remove('hidden');
+                    signinPage.classList.add('hidden');
+                    startFirestoreListeners();
+                } else {
+                    const signinPage = document.getElementById('signin-page');
+                    const mainApp = document.getElementById('main-app');
+                    signinPage.classList.remove('hidden');
+                    mainApp.classList.add('hidden');
+                }
+                toggleLoading(false);
             } catch (error) {
                 console.error("Error setting up Firebase:", error);
                 toggleLoading(false);
@@ -191,7 +181,6 @@
                     const userName = userNameInput.value.trim();
                     if (userName) {
                         localStorage.setItem('userName', userName);
-                        // Trigger a re-evaluation of the auth state to show the main app
                         window.location.reload(); 
                     }
                 });
